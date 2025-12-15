@@ -1,86 +1,22 @@
 version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: voice_kb_postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: ${POSTGRES_DB:-voice_kb_db}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - voice_kb_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
-    container_name: voice_kb_redis
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - voice_kb_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.backend
-    container_name: voice_kb_backend
-    environment:
-      - APP_ENV=development
-      - POSTGRES_HOST=postgres
-      - REDIS_HOST=redis
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - voice_kb_network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend  
       dockerfile: Dockerfile.frontend
-    container_name: voice_kb_frontend
-    environment:
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      - backend
-    networks:
-      - voice_kb_network
-    command: npm run dev
-
-networks:
-  voice_kb_network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  redis_data:
