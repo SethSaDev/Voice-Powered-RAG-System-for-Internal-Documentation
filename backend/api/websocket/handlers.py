@@ -16,9 +16,12 @@ class WebSocketHandler:
             while True:
                 data = await websocket.receive_text()
                 message = json.loads(data)
+                logger.info(f"Received message from {client_id}: {message.get('type', 'unknown')}")
+                
+                # Echo back for now
                 await manager.send_json(client_id, {"type": "echo", "data": message})
         except Exception as e:
-            logger.error(f"WebSocket error: {e}")
+            logger.error(f"WebSocket error for {client_id}: {e}")
         finally:
             manager.disconnect(client_id)
 

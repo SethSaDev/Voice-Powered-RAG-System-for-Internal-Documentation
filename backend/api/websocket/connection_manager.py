@@ -32,5 +32,8 @@ class ConnectionManager:
     async def send_bytes(self, client_id: str, data: bytes):
         if client_id in self.active_connections:
             await self.active_connections[client_id].send_bytes(data)
+    
+    def get_connection_count(self) -> int:
+        return len(self.active_connections)
 
 manager = ConnectionManager()
