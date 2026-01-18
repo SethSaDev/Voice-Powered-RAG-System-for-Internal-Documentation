@@ -1,18 +1,8 @@
-/**
- * WebSocket Hook for Real-time Voice Communication
- * Handles connection lifecycle, audio streaming, and message routing
- */
-
 import { useEffect, useRef, useState, useCallback } from 'react';
-
-export interface WebSocketMessage {
-  type: string;
-  [key: string]: any;
-}
 
 interface UseWebSocketOptions {
   url: string;
-  onMessage?: (data: WebSocketMessage) => void;
+  onMessage?: (data: any) => void;
   onAudioData?: (audioData: ArrayBuffer) => void;
   onError?: (error: Event) => void;
   reconnectInterval?: number;
@@ -20,24 +10,14 @@ interface UseWebSocketOptions {
 }
 
 export const useWebSocket = (options: UseWebSocketOptions) => {
-  const {
-    url,
-    onMessage,
-    onAudioData,
-    onError,
-    reconnectInterval = 3000,
-    maxReconnectAttempts = 5,
-  } = options;
-
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-
+  
   const connect = useCallback(() => {
     try {
-      const ws = new WebSocket(url);
+      const ws = new WebSocket(options.url);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -46,34 +26,32 @@ export const useWebSocket = (options: UseWebSocketOptions) => {
       };
       
       ws.onmessage = (event) => {
-        // Check if message is binary (audio) or text
         if (event.data instanceof ArrayBuffer) {
-          onAudioData?.(event.data);
+          options.onAudioData?.(event.data);
         } else {
           try {
             const data = JSON.parse(event.data);
-            onMessage?.(data);
+            options.onMessage?.(data);
           } catch (e) {
-            console.error('Failed to parse WebSocket message:', e);
+            console.error('Failed to parse message:', e);
           }
         }
       };
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        onError?.(error);
+        options.onError?.(error);
       };
       
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
         
-        // Attempt to reconnect
-        if (reconnectAttempts < maxReconnectAttempts) {
+        if (reconnectAttempts < (options.maxReconnectAttempts || 5)) {
           reconnectTimeoutRef.current = setTimeout(() => {
             setReconnectAttempts(prev => prev + 1);
             connect();
-          }, reconnectInterval);
+          }, options.reconnectInterval || 3000);
         }
       };
       
@@ -81,13 +59,12 @@ export const useWebSocket = (options: UseWebSocketOptions) => {
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
     }
-  }, [url, reconnectAttempts, maxReconnectAttempts, reconnectInterval, onMessage, onAudioData, onError]);
+  }, [options.url, options.reconnectInterval, options.maxReconnectAttempts, reconnectAttempts]);
   
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
-    
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -95,34 +72,21 @@ export const useWebSocket = (options: UseWebSocketOptions) => {
   }, []);
   
   const sendMessage = useCallback((data: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(data));
-    } else {
-      console.warn('WebSocket is not connected');
     }
   }, []);
   
   const sendAudio = useCallback((audioData: ArrayBuffer) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(audioData);
-    } else {
-      console.warn('WebSocket is not connected');
     }
   }, []);
   
   useEffect(() => {
     connect();
-    
-    return () => {
-      disconnect();
-    };
+    return () => disconnect();
   }, [connect, disconnect]);
   
-  return {
-    isConnected,
-    sendMessage,
-    sendAudio,
-    disconnect,
-    reconnectAttempts,
-  };
+  return { isConnected, sendMessage, sendAudio, disconnect, reconnectAttempts };
 };
