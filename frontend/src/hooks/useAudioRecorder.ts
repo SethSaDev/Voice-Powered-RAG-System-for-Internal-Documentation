@@ -12,12 +12,11 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions = {}) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const durationIntervalRef = useRef<NodeJS.Timeout>();
   
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: options.mimeType || 'audio/webm' });
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       
@@ -37,19 +36,12 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions = {}) => {
       mediaRecorder.start(1000);
       setIsRecording(true);
       
-      durationIntervalRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-      
-      // Simulate audio level
-      const levelInterval = setInterval(() => {
+      // Simulate audio level changes
+      const interval = setInterval(() => {
         setAudioLevel(Math.random());
       }, 100);
       
-      return () => {
-        clearInterval(levelInterval);
-        if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
-      };
+      return () => clearInterval(interval);
     } catch (error) {
       console.error('Failed to start recording:', error);
     }
@@ -61,7 +53,6 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions = {}) => {
       setIsRecording(false);
       setRecordingDuration(0);
       setAudioLevel(0);
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     }
   }, [isRecording]);
   
@@ -73,7 +64,6 @@ export const useAudioRecorder = (options: UseAudioRecorderOptions = {}) => {
       setRecordingDuration(0);
       setAudioLevel(0);
       chunksRef.current = [];
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     }
   }, [isRecording]);
   
