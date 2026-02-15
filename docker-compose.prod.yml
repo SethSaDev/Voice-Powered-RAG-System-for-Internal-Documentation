@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  backend:
+    image: voice-kb-backend:latest
+    restart: always
+  frontend:
+    image: voice-kb-frontend:latest
+    restart: always
