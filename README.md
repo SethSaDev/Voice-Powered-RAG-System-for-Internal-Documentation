@@ -10,6 +10,6 @@ Enterprise-grade Voice-Powered RAG System for Internal Documentation
 - Multi-turn conversations
 
 ## Quick Start
-\`\`\`bash
+```bash
 docker-compose up -d
-\`\`\`
+```
